@@ -1,0 +1,142 @@
+[
+  {
+    "id": "q_delivery_01",
+    "category": "배송",
+    "question": "주문한 농산물은 언제 도착하나요? 보통 배송 기간이 얼마나 걸리나요?",
+    "expected_topics": ["배송 기간", "영업일", "출고"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_delivery_02",
+    "category": "배송",
+    "question": "제주도나 도서 산간 지역에도 배송이 되나요?",
+    "expected_topics": ["제주도", "도서 산간", "추가 배송비"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_delivery_03",
+    "category": "배송",
+    "question": "배송 조회는 어떻게 하나요?",
+    "expected_topics": ["배송 조회", "운송장 번호", "택배사"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_return_01",
+    "category": "반품/환불",
+    "question": "받은 채소가 신선하지 않아서 환불을 받고 싶어요. 어떻게 해야 하나요?",
+    "expected_topics": ["신선도", "환불", "반품 절차", "고객센터"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_return_02",
+    "category": "반품/환불",
+    "question": "주문 취소는 언제까지 가능하고 어떻게 하나요?",
+    "expected_topics": ["주문 취소", "취소 기한", "환불 기간"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_return_03",
+    "category": "반품/환불",
+    "question": "잘못된 상품이 배송되었어요. 어떻게 처리되나요?",
+    "expected_topics": ["오배송", "교환", "재배송"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_product_01",
+    "category": "상품",
+    "question": "유기농 인증 상품인지 어떻게 확인할 수 있나요?",
+    "expected_topics": ["유기농 인증", "인증 마크", "친환경"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_product_02",
+    "category": "상품",
+    "question": "지금 이 계절에 구매하기 좋은 제철 농산물은 뭐가 있나요?",
+    "expected_topics": ["제철", "계절 농산물", "추천"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_product_03",
+    "category": "상품",
+    "question": "상품 원산지는 어떻게 확인하나요?",
+    "expected_topics": ["원산지", "생산지", "국내산"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_storage_01",
+    "category": "보관",
+    "question": "배달받은 채소들을 얼마나 보관할 수 있나요? 보관 방법도 알려주세요.",
+    "expected_topics": ["보관 기간", "냉장 보관", "신선도"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_storage_02",
+    "category": "보관",
+    "question": "과일은 냉장 보관해야 하나요, 실온 보관해야 하나요?",
+    "expected_topics": ["냉장", "실온", "과일 보관"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_payment_01",
+    "category": "결제",
+    "question": "어떤 결제 방법을 이용할 수 있나요?",
+    "expected_topics": ["카드 결제", "계좌이체", "간편결제"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_payment_02",
+    "category": "결제",
+    "question": "현금영수증이나 세금계산서 발급이 가능한가요?",
+    "expected_topics": ["현금영수증", "세금계산서", "영수증"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_membership_01",
+    "category": "회원",
+    "question": "정기 구독 서비스가 있나요? 할인 혜택은 어떻게 되나요?",
+    "expected_topics": ["정기 구독", "할인", "혜택"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_membership_02",
+    "category": "회원",
+    "question": "적립금은 어떻게 사용하나요? 유효 기간이 있나요?",
+    "expected_topics": ["적립금", "포인트", "유효 기간"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_cs_01",
+    "category": "고객센터",
+    "question": "고객 센터 운영 시간이 언제인가요? 전화 상담이 가능한가요?",
+    "expected_topics": ["고객센터", "운영 시간", "전화 상담"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_cs_02",
+    "category": "고객센터",
+    "question": "상품에 대해 농부나 생산자에게 직접 질문할 수 있나요?",
+    "expected_topics": ["생산자", "직접 판매", "1:1 문의"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_delivery_04",
+    "category": "배송",
+    "question": "냉장/냉동 배송이 필요한 상품은 어떻게 배송되나요?",
+    "expected_topics": ["냉장 배송", "냉동 배송", "아이스팩"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_product_04",
+    "category": "상품",
+    "question": "GAP(농산물우수관리) 인증이란 무엇인가요?",
+    "expected_topics": ["GAP 인증", "농산물우수관리", "식품 안전"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_cs_03",
+    "category": "고객센터",
+    "question": "상품을 받았는데 포장이 파손되어 있어요. 어떻게 해야 하나요?",
+    "expected_topics": ["포장 파손", "배송 사고", "보상"],
+    "reference_answer": null
+  }
+]
