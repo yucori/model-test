@@ -1,15 +1,24 @@
+// ── Document parsers ──────────────────────────────────────────────────────────
+export interface ParserInfo {
+  id: string
+  name: string
+  available: boolean
+  description: string
+  file_types: string[]
+}
+
 // ── Embedding models (RAG retrieval) ──────────────────────────────────────────
 export interface EmbeddingModelInfo {
-  id: string           // e.g. "local:all-MiniLM-L6-v2"
+  id: string
   name: string
-  provider: 'local' | 'openai' | 'ollama'
+  provider: 'local' | 'openai'
   available: boolean
   dimensions: number
   description: string
 }
 
 // ── LLM models (answer generation) ───────────────────────────────────────────
-export type LLMProvider = 'anthropic' | 'openai' | 'ollama' | 'google'
+export type LLMProvider = 'ollama' | 'google' | 'openrouter'
 
 export interface LLMModelInfo {
   id: string
@@ -19,6 +28,9 @@ export interface LLMModelInfo {
   description: string
 }
 
+// ── Search strategies ─────────────────────────────────────────────────────────
+export type SearchStrategy = 'semantic' | 'bm25' | 'hybrid_rrf'
+
 // ── Documents ─────────────────────────────────────────────────────────────────
 export interface DocumentInfo {
   id: string
@@ -26,12 +38,9 @@ export interface DocumentInfo {
   file_type: string
   size_bytes: number
   uploaded_at: string
-  /** embedding_model_id → chunk_count */
   processed_embeddings: Record<string, number>
-  /** True while background vectorization is running */
   processing: boolean
   processing_error: string | null
-  /** Per-embedding-model error messages (model_id → error string) */
   embed_errors: Record<string, string>
 }
 
@@ -44,17 +53,26 @@ export interface TestQuestion {
   reference_answer: string | null
 }
 
+// ── Retrieved chunk (RAG evidence) ───────────────────────────────────────────
+export interface RetrievedChunk {
+  content: string
+  matched_text: string | null
+  chunk_index: number
+  doc_id: string
+  semantic_score: number | null
+  bm25_score: number | null
+  final_score: number
+}
+
 // ── Test run ──────────────────────────────────────────────────────────────────
 export interface TestRunConfig {
-  /** Embedding models to test (determines RAG retrieval) */
   embedding_model_ids: string[]
-  /** LLM models to test (determines answer generation) */
   llm_model_ids: string[]
   question_ids: string[] | null
   rag_enabled: boolean
   top_k: number
-  /** Minimum cosine similarity (0–1) to include a retrieved chunk. 0 = no filtering. */
   similarity_threshold: number
+  search_strategy: SearchStrategy
   judge_model: string
   run_name: string | null
 }
@@ -79,6 +97,7 @@ export interface EvaluationScores {
   accuracy: number
   helpfulness: number
   korean_fluency: number
+  source_citation: number
   overall: number
   reasoning: string
 }
@@ -86,15 +105,11 @@ export interface EvaluationScores {
 export interface TestResult {
   id: string
   run_id: string
-  /** Which embedding model retrieved the context (null when RAG disabled) */
   embedding_model_id: string | null
-  /** Which LLM generated the answer */
   llm_model_id: string
   question_id: string
   question: string
-  retrieved_context: string[]
-  /** Cosine similarity score (0–1) per retrieved chunk. Empty when RAG disabled. */
-  retrieval_scores: number[]
+  retrieved_chunks: RetrievedChunk[]
   response: string
   latency_ms: number
   prompt_tokens: number
@@ -114,23 +129,117 @@ export interface PairSummary {
   avg_accuracy: number
   avg_helpfulness: number
   avg_korean_fluency: number
+  avg_source_citation: number
   avg_overall: number
   total_tests: number
   failed_tests: number
   avg_completion_tokens: number
-  /** Average cosine similarity of retrieved chunks (0–1). 0 when RAG disabled. */
   avg_retrieval_score: number
+}
+
+export interface EmbDetail {
+  avg_relevance: number
+  avg_accuracy: number
+  avg_helpfulness: number
+  avg_korean_fluency: number
+  avg_source_citation: number
+  avg_overall: number
+  avg_retrieval_score: number
+  llm_count: number
 }
 
 export interface RunComparison {
   run_id: string
   run_name: string
-  /** All (embedding × LLM) pairs, sorted by avg_overall desc */
   pair_summaries: PairSummary[]
-  /** LLM → avg_overall (aggregated across all embeddings) */
   llm_avg: Record<string, number>
-  /** Embedding → avg_overall (aggregated across all LLMs) */
   emb_avg: Record<string, number>
-  /** category → pair_label → avg_overall */
+  emb_detail: Record<string, EmbDetail>
   by_category: Record<string, Record<string, number>>
+}
+
+// ── Pipeline stage comparison ─────────────────────────────────────────────────
+
+export interface ChunkVariantConfig {
+  strategy: string
+  chunk_size: number
+  overlap: number
+  label: string
+}
+
+export interface ChunkVariantStats {
+  config: ChunkVariantConfig
+  chunk_count: number
+  avg_size: number
+  median_size: number
+  min_size: number
+  max_size: number
+  size_buckets: Record<string, number>
+  structure_aligned_count: number
+  sample_chunks: string[]
+}
+
+export interface ChunkCompareResult {
+  doc_id: string
+  filename: string
+  parser: string
+  variants: ChunkVariantStats[]
+}
+
+export interface SearchChunkResult {
+  content: string
+  matched_text: string | null
+  chunk_index: number
+  doc_id: string
+  semantic_score: number | null
+  bm25_score: number | null
+  final_score: number
+}
+
+export interface SearchQueryResult {
+  strategy: string
+  label: string
+  query: string
+  chunks: SearchChunkResult[]
+  avg_score: number
+}
+
+export interface SearchCompareResult {
+  doc_id: string
+  emb_model_id: string
+  query_results: SearchQueryResult[]
+  strategies_tested: string[]
+  queries_tested: string[]
+}
+
+// ── Embedding model comparison ─────────────────────────────────────────────────
+
+export interface EmbTestCase {
+  id: string
+  query: string
+  expected_contains: string
+  category: string
+}
+
+export interface EmbTestResult {
+  test_case_id: string
+  query: string
+  expected_contains: string
+  hit_rank: number | null
+  chunks: SearchChunkResult[]
+}
+
+export interface EmbModelResult {
+  emb_model_id: string
+  test_results: EmbTestResult[]
+  hit_at_1: number
+  hit_at_3: number
+  hit_at_k: number
+  available: boolean
+}
+
+export interface EmbCompareResult {
+  model_results: EmbModelResult[]
+  top_k: number
+  total_cases: number
 }

@@ -32,19 +32,38 @@ const METRIC_KEYS = [
   { key: 'avg_accuracy', label: '정확성' },
   { key: 'avg_helpfulness', label: '도움성' },
   { key: 'avg_korean_fluency', label: '한국어' },
+  { key: 'avg_source_citation', label: '출처인용' },
   { key: 'avg_overall', label: '종합' },
   { key: 'avg_retrieval_score', label: '검색 유사도' },
 ]
 
+// Metrics that correspond to EvaluationScores fields (excludes retrieval_score)
+const SCORE_KEYS = [
+  { key: 'relevance', label: '관련성' },
+  { key: 'accuracy', label: '정확성' },
+  { key: 'helpfulness', label: '도움성' },
+  { key: 'korean_fluency', label: '한국어' },
+  { key: 'source_citation', label: '출처인용' },
+  { key: 'overall', label: '종합' },
+]
+
 function shortLabel(id: string | null) {
-  return (id ?? 'RAG 없음')
-    .replace('claude-', 'C-')
-    .replace('gpt-', 'G-')
-    .replace('local:', '')
-    .replace('openai:', '')
-    .replace('all-MiniLM-L6-v2', 'MiniLM')
-    .replace('text-embedding-', 'emb-')
+  if (!id) return 'RAG 없음'
+  const llm = id
     .replace('-20251001', '')
+    .replace('gemini-', 'G-')
+  const noPrefix = llm.replace(/^(local|openai|ollama|hf):/, '')
+  const name = noPrefix.includes('/') ? noPrefix.split('/').pop()! : noPrefix.split(':')[0]
+  return name
+    .replace('all-MiniLM-L6-v2', 'MiniLM')
+    .replace('nomic-embed-text-v1.5', 'nomic-v1.5')
+    .replace('ko-sroberta-multitask', 'ko-sroberta')
+    .replace('jina-embeddings-v4', 'jina-v4')
+    .replace('qwen3-embedding-4b', 'qwen3-4b')
+    .replace('embeddinggemma-300m', 'gemma-300m')
+    .replace('multilingual-e5-small', 'me5-small')
+    .replace('text-embedding-3-small', 'emb-3-small')
+    .replace('text-embedding-3-large', 'emb-3-large')
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -77,7 +96,7 @@ export default function ResultDetailPage() {
     )
   }
 
-  const { pair_summaries, llm_avg, emb_avg, by_category } = comparison
+  const { pair_summaries, emb_avg, emb_detail, by_category } = comparison
   const best = pair_summaries[0]
 
   // Unique embedding and LLM IDs (type-safe)
@@ -141,7 +160,7 @@ export default function ResultDetailPage() {
             <span>종합 <b className="text-indigo-700">{best.avg_overall.toFixed(2)}</b>/10</span>
             <span>정확성 {best.avg_accuracy.toFixed(2)}</span>
             <span>관련성 {best.avg_relevance.toFixed(2)}</span>
-            <span>응답시간 {Math.round(best.avg_latency_ms)}ms</span>
+            <span className="text-slate-400 text-xs">{Math.round(best.avg_latency_ms)}ms</span>
           </div>
         </div>
       </div>
@@ -167,14 +186,15 @@ export default function ResultDetailPage() {
                 <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">정확성</th>
                 <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">도움성</th>
                 <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">한국어</th>
+                <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">출처인용</th>
                 {ragEnabled && (
                   <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">검색유사도</th>
                 )}
-                <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">
-                  응답속도 <span className="text-slate-300">↓</span>
+                <th className="px-3 py-3 text-center text-slate-300 font-medium whitespace-nowrap text-xs">
+                  응답속도 ↓
                 </th>
-                <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">
-                  토큰 <span className="text-slate-300">↓</span>
+                <th className="px-3 py-3 text-center text-slate-300 font-medium whitespace-nowrap text-xs">
+                  토큰 ↓
                 </th>
                 <th className="px-3 py-3 text-center text-slate-500 font-medium whitespace-nowrap">실패</th>
               </tr>
@@ -220,11 +240,12 @@ export default function ResultDetailPage() {
                     {heatCell(ps.avg_overall,        'avg_overall',        ps.avg_overall.toFixed(2))}
                     {heatCell(ps.avg_relevance,       'avg_relevance',      ps.avg_relevance.toFixed(2))}
                     {heatCell(ps.avg_accuracy,        'avg_accuracy',       ps.avg_accuracy.toFixed(2))}
-                    {heatCell(ps.avg_helpfulness,     'avg_helpfulness',    ps.avg_helpfulness.toFixed(2))}
-                    {heatCell(ps.avg_korean_fluency,  'avg_korean_fluency', ps.avg_korean_fluency.toFixed(2))}
+                    {heatCell(ps.avg_helpfulness,     'avg_helpfulness',     ps.avg_helpfulness.toFixed(2))}
+                    {heatCell(ps.avg_korean_fluency,  'avg_korean_fluency',  ps.avg_korean_fluency.toFixed(2))}
+                    {heatCell(ps.avg_source_citation, 'avg_source_citation', ps.avg_source_citation.toFixed(2))}
                     {ragEnabled && heatCell(ps.avg_retrieval_score, 'avg_retrieval_score', ps.avg_retrieval_score.toFixed(3))}
-                    {heatCell(ps.avg_latency_ms,      'avg_latency_ms',     `${Math.round(ps.avg_latency_ms)}ms`, false)}
-                    {heatCell(ps.avg_completion_tokens, 'avg_completion_tokens', `${Math.round(ps.avg_completion_tokens)}`, false)}
+                    <td className="px-3 py-3 text-center text-slate-400 tabular-nums text-xs">{Math.round(ps.avg_latency_ms)}ms</td>
+                    <td className="px-3 py-3 text-center text-slate-400 tabular-nums text-xs">{Math.round(ps.avg_completion_tokens)}</td>
                     <td className="px-3 py-3 text-center">
                       <span className={ps.failed_tests > 0 ? 'text-red-500 font-bold' : 'text-slate-300'}>
                         {ps.failed_tests}
@@ -299,6 +320,113 @@ export default function ResultDetailPage() {
               </tbody>
             </table>
             <p className="text-xs text-slate-400 mt-3">테두리: 해당 열에서 최고 점수</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── 임베딩 모델별 LLM 답변 품질 (방법 1 — 교차 분석) ── */}
+      {ragEnabled && emb_detail && Object.keys(emb_detail).length > 1 && (
+        <div className="bg-white border border-slate-200 rounded-2xl mb-6">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800">임베딩 모델별 LLM 답변 품질</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              각 임베딩 모델 사용 시 LLM 답변 품질 평균 ({definedEmbIds.length > 0 ? `${Object.values(emb_detail)[0]?.llm_count ?? '?'}개 LLM 평균` : ''}) ·
+              검색 컨텍스트 품질 → LLM 답변 품질의 인과 관계를 확인합니다
+            </p>
+          </div>
+          <div className="p-5">
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 text-xs text-indigo-700 mb-4">
+              <span className="font-semibold">교차 분석 해석:</span>
+              {' '}코사인 유사도(검색 유사도)가 높아도 LLM 답변 품질이 낮다면 false positive(무관한 청크가 상위 반환)를 의심하세요.
+              반대로 유사도는 낮지만 답변 품질이 높다면 실제로 관련 있는 청크를 찾고 있다는 의미입니다.
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-400">
+                    <th className="text-left px-4 py-2.5 font-medium">임베딩 모델</th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="LLM 답변의 질문 관련성 평균 (0–10). 임베딩이 관련 청크를 잘 찾을수록 높아짐." className="cursor-help border-b border-dashed border-slate-300">관련성</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="LLM 답변 정확도 평균 (0–10). 사실 오류 없이 정확한 정보를 제공하는 비율." className="cursor-help border-b border-dashed border-slate-300">정확성</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="LLM 답변 도움성 평균 (0–10). 사용자 문제 해결에 실제로 도움이 되는 정도." className="cursor-help border-b border-dashed border-slate-300">도움성</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="한국어 유창성 평균 (0–10). 자연스러운 한국어 표현 및 문법." className="cursor-help border-b border-dashed border-slate-300">한국어</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="출처 인용 정확도 평균 (0–10). 문서·조·항을 올바르게 특정했는지." className="cursor-help border-b border-dashed border-slate-300">출처인용</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="전체 품질 종합 점수 평균 (0–10)." className="cursor-help border-b border-dashed border-slate-300">종합</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <span title="검색 청크의 평균 코사인 유사도 (0–1). 높다고 반드시 좋은 청크가 아님 (false positive 주의)." className="cursor-help border-b border-dashed border-slate-300">검색 유사도</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const entries = Object.entries(emb_detail).sort(([, a], [, b]) => b.avg_overall - a.avg_overall)
+                    const overallVals = entries.map(([, d]) => d.avg_overall)
+                    const maxOverall = Math.max(...overallVals)
+                    const minOverall = Math.min(...overallVals)
+
+                    const embDetailMetrics: Array<{ key: keyof typeof entries[0][1]; scale: number }> = [
+                      { key: 'avg_relevance',      scale: 10 },
+                      { key: 'avg_accuracy',       scale: 10 },
+                      { key: 'avg_helpfulness',    scale: 10 },
+                      { key: 'avg_korean_fluency', scale: 10 },
+                      { key: 'avg_source_citation',scale: 10 },
+                      { key: 'avg_overall',        scale: 10 },
+                      { key: 'avg_retrieval_score',scale: 1  },
+                    ]
+
+                    return entries.map(([embId, detail], idx) => {
+                      const isTop = detail.avg_overall === maxOverall && detail.avg_overall > 0
+                      const isBot = detail.avg_overall === minOverall && entries.length > 1
+
+                      const cellColor = (val: number, scale: number) => {
+                        const norm = val / scale
+                        if (norm >= 0.8) return 'bg-emerald-100 text-emerald-700'
+                        if (norm >= 0.65) return 'bg-teal-50 text-teal-700'
+                        if (norm >= 0.5) return 'bg-amber-50 text-amber-700'
+                        return 'bg-red-50 text-red-600'
+                      }
+
+                      return (
+                        <tr key={embId} className={`border-b border-slate-50 hover:bg-slate-50 ${idx === 0 ? 'bg-indigo-50/20' : ''}`}>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {isTop && <span className="text-sm">🏆</span>}
+                              {isBot && !isTop && <span className="text-sm opacity-50">▼</span>}
+                              <span className="font-medium text-slate-700">{shortLabel(embId)}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">{detail.llm_count}개 LLM 평균</div>
+                          </td>
+                          {embDetailMetrics.map(({ key, scale }) => {
+                            const val = detail[key] as number
+                            return (
+                              <td key={key} className="px-3 py-3 text-center">
+                                <span className={`inline-block px-2 py-0.5 rounded font-bold tabular-nums text-xs ${cellColor(val, scale)}`}>
+                                  {scale === 1 ? val.toFixed(3) : val.toFixed(2)}
+                                </span>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              ※ 행 순서: 종합 점수 기준 내림차순 · 검색 유사도가 높아도 종합 점수가 낮다면 false positive를 의심하세요.
+            </p>
           </div>
         </div>
       )}
@@ -455,51 +583,60 @@ export default function ResultDetailPage() {
                         {/* Scores */}
                         {r.scores && (
                           <div className="border-t border-slate-100 pt-3 space-y-1.5">
-                            {METRIC_KEYS.map(({ key, label }) => (
+                            {SCORE_KEYS.map(({ key, label }) => (
                               <ScoreBar
                                 key={key}
-                                score={r.scores![key.replace('avg_', '') as keyof typeof r.scores] as number}
+                                score={r.scores![key as keyof typeof r.scores] as number}
                                 label={label}
                               />
                             ))}
                             {r.scores.reasoning && (
-                              <p className="text-xs text-slate-400 italic mt-2 border-t border-slate-50 pt-2">
-                                {r.scores.reasoning}
-                              </p>
+                              <details className="mt-2 border-t border-slate-100 pt-2">
+                                <summary className="text-xs font-semibold text-amber-600 cursor-pointer hover:text-amber-700">
+                                  ⚖️ Judge 평가 이유
+                                </summary>
+                                <p className="text-xs text-amber-900 mt-1.5 leading-relaxed bg-amber-50 rounded-lg p-2">
+                                  {r.scores.reasoning}
+                                </p>
+                              </details>
                             )}
                           </div>
                         )}
 
-                        {/* Retrieved context */}
-                        {r.retrieved_context.length > 0 && (
+                        {/* Retrieved chunks with scores */}
+                        {r.retrieved_chunks && r.retrieved_chunks.length > 0 && (
                           <details className="mt-3">
                             <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600 select-none">
-                              RAG 컨텍스트 ({r.retrieved_context.length}청크)
-                              {r.retrieval_scores.length > 0 && (
-                                <span className="ml-1.5 text-teal-500">
-                                  · 평균 유사도 {(r.retrieval_scores.reduce((a, b) => a + b, 0) / r.retrieval_scores.length).toFixed(2)}
-                                </span>
-                              )}
+                              🔍 검색 청크 ({r.retrieved_chunks.length}개)
+                              <span className="ml-1.5 text-teal-500">
+                                · 평균 {(r.retrieved_chunks.reduce((a, c) => a + c.final_score, 0) / r.retrieved_chunks.length).toFixed(3)}
+                              </span>
                             </summary>
                             <div className="mt-2 space-y-1.5">
-                              {r.retrieved_context.map((ctx, i) => (
-                                <div key={i} className="bg-slate-50 rounded p-2">
-                                  {r.retrieval_scores[i] !== undefined && (
-                                    <div className="flex items-center gap-1 mb-1">
-                                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                                        r.retrieval_scores[i] >= 0.65 ? 'bg-emerald-100 text-emerald-700' :
-                                        r.retrieval_scores[i] >= 0.35 ? 'bg-amber-100 text-amber-700' :
-                                        'bg-red-100 text-red-600'
-                                      }`}>
-                                        {r.retrieval_scores[i].toFixed(2)}
+                              {r.retrieved_chunks.map((chunk, i) => (
+                                <div key={i} className="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
+                                  <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                                    <span className="text-xs font-bold text-slate-400">#{i + 1}</span>
+                                    {chunk.semantic_score != null && (
+                                      <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${
+                                        chunk.semantic_score >= 0.7 ? 'bg-emerald-100 text-emerald-700' :
+                                        chunk.semantic_score >= 0.4 ? 'bg-amber-100 text-amber-700' :
+                                        'bg-red-50 text-red-600'}`}>
+                                        sem {chunk.semantic_score.toFixed(3)}
                                       </span>
-                                      <span className="text-xs text-slate-400">
-                                        {r.retrieval_scores[i] >= 0.65 ? '높음' :
-                                         r.retrieval_scores[i] >= 0.35 ? '중간' : '낮음'}
+                                    )}
+                                    {chunk.bm25_score != null && (
+                                      <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+                                        bm25 {chunk.bm25_score.toFixed(2)}
                                       </span>
-                                    </div>
-                                  )}
-                                  <p className="text-xs text-slate-500 line-clamp-3">{ctx}</p>
+                                    )}
+                                    {chunk.semantic_score != null && chunk.bm25_score != null && (
+                                      <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">
+                                        rrf {chunk.final_score.toFixed(4)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-600 line-clamp-4 leading-relaxed">{chunk.content}</p>
                                 </div>
                               ))}
                             </div>
