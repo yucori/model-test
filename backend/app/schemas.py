@@ -4,6 +4,16 @@ from datetime import datetime
 from enum import Enum
 
 
+# ── Document parsers ─────────────────────────────────────────────────────────
+
+class ParserInfo(BaseModel):
+    id: str
+    name: str
+    available: bool
+    description: str
+    file_types: list[str] = []
+
+
 # ── Embedding models ────────────────────────────────────────────────────────
 
 class EmbeddingModelInfo(BaseModel):
@@ -18,10 +28,9 @@ class EmbeddingModelInfo(BaseModel):
 # ── LLM (generation) models ─────────────────────────────────────────────────
 
 class LLMProvider(str, Enum):
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
     OLLAMA = "ollama"
     GOOGLE = "google"
+    OPENROUTER = "openrouter"
 
 
 class LLMModelInfo(BaseModel):
@@ -32,6 +41,14 @@ class LLMModelInfo(BaseModel):
     description: str = ""
 
 
+# ── Search strategies ────────────────────────────────────────────────────────
+
+class SearchStrategy(str, Enum):
+    SEMANTIC = "semantic"        # vector similarity only
+    BM25 = "bm25"               # keyword BM25 only
+    HYBRID_RRF = "hybrid_rrf"   # BM25 + semantic fused with RRF
+
+
 # ── Documents ────────────────────────────────────────────────────────────────
 
 class DocumentInfo(BaseModel):
@@ -40,14 +57,9 @@ class DocumentInfo(BaseModel):
     file_type: str
     size_bytes: int
     uploaded_at: datetime
-    # Maps embedding_model_id → chunk_count.
-    # Empty = not indexed by any embedding model yet.
     processed_embeddings: dict[str, int] = {}
-    # True while background vectorization is in progress.
     processing: bool = False
-    # Error message if text extraction (pre-embedding) failed.
     processing_error: Optional[str] = None
-    # Per-embedding-model error messages (model_id → error string).
     embed_errors: dict[str, str] = {}
 
 
@@ -75,6 +87,26 @@ class UpdateTestQuestion(BaseModel):
     reference_answer: Optional[str] = None
 
 
+# ── Retrieved chunk (RAG evidence) ──────────────────────────────────────────
+
+class RetrievedChunk(BaseModel):
+    """A single retrieved chunk with all its scores.
+
+    - content: text shown to LLM (parent text when parent-child strategy is used)
+    - matched_text: the child chunk that was actually matched (may differ from content)
+    - semantic_score: cosine similarity 0-1, None if not used
+    - bm25_score: BM25 relevance score (unnormalized), None if not used
+    - final_score: the score used for final ranking (semantic, bm25, or RRF)
+    """
+    content: str
+    matched_text: Optional[str] = None  # child chunk text (parent-child only)
+    chunk_index: int
+    doc_id: str
+    semantic_score: Optional[float] = None
+    bm25_score: Optional[float] = None
+    final_score: float
+
+
 # ── Test run ─────────────────────────────────────────────────────────────────
 
 class TestRunConfig(BaseModel):
@@ -85,16 +117,14 @@ class TestRunConfig(BaseModel):
     When rag_enabled=False, embedding_model_ids is ignored and each question
     is sent to every LLM without any retrieved context.
     """
-    embedding_model_ids: list[str]   # which embedding models to benchmark
-    llm_model_ids: list[str]         # which LLM models to benchmark
-    question_ids: Optional[list[str]] = None   # None = all questions
+    embedding_model_ids: list[str]
+    llm_model_ids: list[str]
+    question_ids: Optional[list[str]] = None
     rag_enabled: bool = True
     top_k: int = 3
-    # Minimum cosine similarity (0–1) for a retrieved chunk to be included in context.
-    # 0.0 = no filtering (include all top-k results regardless of quality).
-    # Recommended: 0.3 — drops clearly irrelevant chunks before they reach the LLM.
     similarity_threshold: float = 0.0
-    judge_model: str = "claude-haiku-4-5-20251001"
+    search_strategy: SearchStrategy = SearchStrategy.SEMANTIC
+    judge_model: str = ""
     run_name: Optional[str] = None
 
 
@@ -124,6 +154,7 @@ class EvaluationScores(BaseModel):
     accuracy: float
     helpfulness: float
     korean_fluency: float
+    source_citation: float
     overall: float
     reasoning: str
 
@@ -131,16 +162,12 @@ class EvaluationScores(BaseModel):
 class TestResult(BaseModel):
     id: str
     run_id: str
-    # Which embedding model retrieved the context (None when RAG disabled)
     embedding_model_id: Optional[str]
-    # Which LLM generated the answer
     llm_model_id: str
     question_id: str
     question: str
-    retrieved_context: list[str]
-    # Cosine similarity score (0–1) for each retrieved chunk, in the same order.
-    # Empty when RAG is disabled or retrieval failed.
-    retrieval_scores: list[float] = []
+    # Detailed retrieval evidence (replaces retrieved_context + retrieval_scores)
+    retrieved_chunks: list[RetrievedChunk] = []
     response: str
     latency_ms: float
     prompt_tokens: int
@@ -153,32 +180,126 @@ class TestResult(BaseModel):
 # ── Comparison / reporting ───────────────────────────────────────────────────
 
 class PairSummary(BaseModel):
-    """Summary for one (embedding, LLM) combination."""
-    embedding_model_id: Optional[str]  # None when RAG disabled
+    embedding_model_id: Optional[str]
     llm_model_id: str
-    pair_label: str                    # human-readable e.g. "MiniLM + Claude Sonnet"
+    pair_label: str
     avg_latency_ms: float
     avg_relevance: float
     avg_accuracy: float
     avg_helpfulness: float
     avg_korean_fluency: float
+    avg_source_citation: float
     avg_overall: float
     total_tests: int
     failed_tests: int
     avg_completion_tokens: float
-    # Average cosine similarity of retrieved chunks across all questions.
-    # 0.0 when RAG is disabled or no chunks passed the similarity threshold.
     avg_retrieval_score: float = 0.0
+
+
+class EmbDetail(BaseModel):
+    avg_relevance: float
+    avg_accuracy: float
+    avg_helpfulness: float
+    avg_korean_fluency: float
+    avg_source_citation: float
+    avg_overall: float
+    avg_retrieval_score: float
+    llm_count: int
 
 
 class RunComparison(BaseModel):
     run_id: str
     run_name: str
-    # All (embedding × LLM) pairs, sorted by avg_overall desc
     pair_summaries: list[PairSummary]
-    # LLM-level average (across all embedding models)
     llm_avg: dict[str, float]
-    # Embedding-level average (across all LLM models); empty when RAG disabled
     emb_avg: dict[str, float]
-    # category → pair_label → avg_overall
+    emb_detail: dict[str, EmbDetail] = {}
     by_category: dict[str, dict[str, float]]
+
+
+# ── Pipeline stage comparison schemas ────────────────────────────────────────
+
+class ChunkVariantConfig(BaseModel):
+    strategy: str       # paragraph | sentence | fixed | semantic | parent_child
+    chunk_size: int
+    overlap: int = 0
+    label: str          # human-readable name
+
+
+class ChunkVariantStats(BaseModel):
+    config: ChunkVariantConfig
+    chunk_count: int
+    avg_size: float
+    median_size: float
+    min_size: int
+    max_size: int
+    size_buckets: dict[str, int]   # "< 200", "200-400", "400-600", "> 600"
+    structure_aligned_count: int   # chunks starting at ## / ### heading boundary
+    sample_chunks: list[str]       # first 5 chunks
+
+
+class ChunkCompareResult(BaseModel):
+    doc_id: str
+    filename: str
+    parser: str
+    variants: list[ChunkVariantStats]
+
+
+class SearchChunkResult(BaseModel):
+    """One retrieved chunk in a search comparison result."""
+    content: str
+    matched_text: Optional[str] = None
+    chunk_index: int
+    doc_id: str
+    semantic_score: Optional[float] = None
+    bm25_score: Optional[float] = None
+    final_score: float
+
+
+class SearchQueryResult(BaseModel):
+    """Results for one query under one search strategy."""
+    strategy: str
+    label: str
+    query: str
+    chunks: list[SearchChunkResult]
+    avg_score: float
+
+
+class SearchCompareResult(BaseModel):
+    doc_id: str
+    emb_model_id: str
+    query_results: list[SearchQueryResult]   # one per (strategy, query)
+    strategies_tested: list[str]
+    queries_tested: list[str]
+
+
+# ── Embedding model comparison ────────────────────────────────────────────────
+
+class EmbTestCase(BaseModel):
+    id: str
+    query: str
+    expected_contains: str   # 이 문자열이 검색 결과 청크에 포함되면 정답
+    category: str = ""
+
+
+class EmbTestResult(BaseModel):
+    test_case_id: str
+    query: str
+    expected_contains: str
+    hit_rank: Optional[int] = None   # 1-indexed, None = top_k 안에 없음
+    chunks: list[SearchChunkResult]
+
+
+class EmbModelResult(BaseModel):
+    emb_model_id: str
+    test_results: list[EmbTestResult]
+    hit_at_1: float
+    hit_at_3: float
+    hit_at_k: float
+    available: bool = True   # 벡터화 안 된 경우 False
+
+
+class EmbCompareResult(BaseModel):
+    model_results: list[EmbModelResult]
+    top_k: int
+    total_cases: int

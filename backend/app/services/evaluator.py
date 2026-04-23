@@ -1,6 +1,6 @@
 """
 LLM-as-Judge evaluator for chatbot responses.
-Uses a judge model (default: Claude Haiku) to score responses 0-10
+Uses a judge model to score responses 0-10
 across four dimensions relevant to Korean CS chatbots.
 
 Supports Anthropic, OpenAI, and Ollama judge models.
@@ -20,11 +20,18 @@ Score the chatbot response below on each criterion from 0 to 10 (decimals allowe
 Be strict: reserve 9-10 for truly excellent responses.
 
 Criteria:
-1. relevance       — How directly does the response address the customer question?
-2. accuracy        — How factually correct is the information given the reference material?
-3. helpfulness     — Does the customer receive concrete, actionable help?
-4. korean_fluency  — Is the Korean natural, polite, and appropriate for customer service?
-5. overall         — Overall CS response quality combining all criteria above.
+1. relevance        — How directly does the response address the customer question?
+2. accuracy         — How factually correct is the information given the reference material?
+3. helpfulness      — Does the customer receive concrete, actionable help?
+4. korean_fluency   — Is the Korean natural, polite, and appropriate for customer service?
+5. source_citation  — Does the response correctly identify WHERE in the document the answer comes from?
+                      Score 0: no source mentioned at all.
+                      Score 3-5: vaguely references a document or policy without specifics.
+                      Score 6-8: correctly names the relevant policy document or section/table.
+                      Score 9-10: pinpoints the exact section, clause, or table row the information came from.
+                      NOTE: Both prose-structured (조/항) and table-structured documents must be treated equally.
+                      A response citing a table row or table header correctly is as good as citing an article number.
+6. overall          — Overall CS response quality combining all criteria above.
 
 Customer question:
 {question}
@@ -36,7 +43,7 @@ Chatbot response:
 {response}
 
 Output ONLY the following JSON object. No explanation, no markdown fences:
-{{"relevance": 7.5, "accuracy": 8, "helpfulness": 7, "korean_fluency": 9, "overall": 7.5, "reasoning": "..."}}"""
+{{"relevance": 7.5, "accuracy": 8, "helpfulness": 7, "korean_fluency": 9, "source_citation": 6, "overall": 7.5, "reasoning": "..."}}"""
 
 
 async def evaluate_response(
@@ -54,8 +61,7 @@ async def evaluate_response(
             response=response,
         )
 
-        provider = _provider_for(judge_model)
-        raw = await _call_judge(judge_model, provider, prompt)
+        raw = await _call_judge(judge_model, prompt)
         data = _extract_json(raw)
         if data is None:
             print(f"[evaluator] Could not extract JSON from judge output: {raw[:200]!r}")
@@ -66,6 +72,7 @@ async def evaluate_response(
             accuracy=_clamp(data.get("accuracy", 0)),
             helpfulness=_clamp(data.get("helpfulness", 0)),
             korean_fluency=_clamp(data.get("korean_fluency", 0)),
+            source_citation=_clamp(data.get("source_citation", 0)),
             overall=_clamp(data.get("overall", 0)),
             reasoning=str(data.get("reasoning", "")),
         )
@@ -112,12 +119,13 @@ def _extract_json(raw: str) -> dict | None:
 
     # Strategy 4: regex field extraction — works even when JSON is malformed
     fields = {
-        "relevance":      r'"?relevance"?\s*[:=]\s*([\d.]+)',
-        "accuracy":       r'"?accuracy"?\s*[:=]\s*([\d.]+)',
-        "helpfulness":    r'"?helpfulness"?\s*[:=]\s*([\d.]+)',
-        "korean_fluency": r'"?korean_fluency"?\s*[:=]\s*([\d.]+)',
-        "overall":        r'"?overall"?\s*[:=]\s*([\d.]+)',
-        "reasoning":      r'"?reasoning"?\s*[:=]\s*"([^"]*)"',
+        "relevance":       r'"?relevance"?\s*[:=]\s*([\d.]+)',
+        "accuracy":        r'"?accuracy"?\s*[:=]\s*([\d.]+)',
+        "helpfulness":     r'"?helpfulness"?\s*[:=]\s*([\d.]+)',
+        "korean_fluency":  r'"?korean_fluency"?\s*[:=]\s*([\d.]+)',
+        "source_citation": r'"?source_citation"?\s*[:=]\s*([\d.]+)',
+        "overall":         r'"?overall"?\s*[:=]\s*([\d.]+)',
+        "reasoning":       r'"?reasoning"?\s*[:=]\s*"([^"]*)"',
     }
     result: dict = {}
     for key, pattern in fields.items():
@@ -125,8 +133,8 @@ def _extract_json(raw: str) -> dict | None:
         if hit:
             result[key] = hit.group(1)
 
-    # Accept partial extraction only if all five numeric fields are present
-    required = {"relevance", "accuracy", "helpfulness", "korean_fluency", "overall"}
+    # Accept partial extraction only if all six numeric fields are present
+    required = {"relevance", "accuracy", "helpfulness", "korean_fluency", "source_citation", "overall"}
     if required.issubset(result.keys()):
         return result
 
@@ -143,56 +151,32 @@ def _clamp(value) -> float:
 
 # ── Provider routing ───────────────────────────────────────────────────────────
 
-def _provider_for(model_id: str) -> str:
-    if model_id.startswith("claude"):
-        return "anthropic"
-    if model_id.startswith(("gpt-", "o1", "o3")):
-        return "openai"
+async def _call_judge(model_id: str, prompt: str) -> str:
     if model_id.startswith("gemini"):
-        return "google"
-    return "ollama"
+        return await _call_gemini_judge(model_id, prompt)
+    return await _call_ollama_judge(model_id, prompt)
 
 
-async def _call_judge(model_id: str, provider: str, prompt: str) -> str:
-    if provider == "anthropic":
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-        r = await client.messages.create(
-            model=model_id,
-            max_tokens=512,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return r.content[0].text
-
-    if provider == "openai":
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-        r = await client.chat.completions.create(
-            model=model_id,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=512,
-        )
-        return r.choices[0].message.content or ""
-
-    if provider == "google":
-        from google import genai
-        from google.genai import types as genai_types
-        client = genai.Client(api_key=settings.gemini_api_key)
-        r = await client.aio.models.generate_content(
-            model=model_id,
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(max_output_tokens=512),
-        )
-        return r.text or ""
-
-    # Ollama — use format="json" to hint structured output (supported by most models)
+async def _call_ollama_judge(model_id: str, prompt: str) -> str:
     import httpx
     async with httpx.AsyncClient(base_url=settings.ollama_base_url, timeout=120) as c:
         r = await c.post("/api/chat", json={
             "model": model_id,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "format": "json",   # structured output hint (Ollama ≥ 0.1.25)
+            "format": "json",
         })
         r.raise_for_status()
     return r.json().get("message", {}).get("content", "")
+
+
+async def _call_gemini_judge(model_id: str, prompt: str) -> str:
+    from google import genai
+    from google.genai import types as genai_types
+    client = genai.Client(api_key=settings.gemini_api_key)
+    r = await client.aio.models.generate_content(
+        model=model_id,
+        contents=prompt,
+        config=genai_types.GenerateContentConfig(max_output_tokens=512),
+    )
+    return r.text or ""

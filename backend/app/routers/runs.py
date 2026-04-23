@@ -12,6 +12,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app import state
 from app.schemas import (
+    EmbDetail,
     PairSummary,
     RunComparison,
     TestRun,
@@ -28,7 +29,6 @@ def _short(model_id: str | None) -> str:
         return "—"
     return (
         model_id
-        .replace("claude-", "")
         .replace("text-embedding-", "emb-")
         .replace("local:", "")
         .replace("openai:", "")
@@ -158,8 +158,8 @@ async def get_comparison(run_id: str):
         return sum(vals) / len(vals) if vals else 0.0
 
     def _avg_retrieval(res_list: list) -> float:
-        """Average cosine similarity across all retrieved chunks in all results."""
-        all_scores = [s for r in res_list for s in r.retrieval_scores]
+        """Average final score across all retrieved chunks in all results."""
+        all_scores = [c.final_score for r in res_list for c in r.retrieved_chunks]
         return sum(all_scores) / len(all_scores) if all_scores else 0.0
 
     pair_summaries: list[PairSummary] = []
@@ -174,6 +174,7 @@ async def get_comparison(run_id: str):
             avg_accuracy=_avg_score(res_list, "accuracy"),
             avg_helpfulness=_avg_score(res_list, "helpfulness"),
             avg_korean_fluency=_avg_score(res_list, "korean_fluency"),
+            avg_source_citation=_avg_score(res_list, "source_citation"),
             avg_overall=_avg_score(res_list, "overall"),
             total_tests=len(res_list),
             failed_tests=sum(1 for r in res_list if r.error),
@@ -189,12 +190,35 @@ async def get_comparison(run_id: str):
         llm_scores[ps.llm_model_id].append(ps.avg_overall)
     llm_avg = {k: sum(v) / len(v) for k, v in llm_scores.items()}
 
-    # Aggregate by embedding (across all LLMs)
+    # Aggregate by embedding (across all LLMs) — overall only (kept for backwards compat)
     emb_scores: dict[str, list[float]] = defaultdict(list)
     for ps in pair_summaries:
         if ps.embedding_model_id:
             emb_scores[ps.embedding_model_id].append(ps.avg_overall)
     emb_avg = {k: sum(v) / len(v) for k, v in emb_scores.items()}
+
+    # Detailed per-embedding aggregates (all quality metrics across all LLMs)
+    emb_ps_map: dict[str, list[PairSummary]] = defaultdict(list)
+    for ps in pair_summaries:
+        if ps.embedding_model_id:
+            emb_ps_map[ps.embedding_model_id].append(ps)
+
+    def _mean(ps_list: list[PairSummary], attr: str) -> float:
+        return sum(getattr(p, attr) for p in ps_list) / len(ps_list)
+
+    emb_detail: dict[str, EmbDetail] = {
+        emb_id: EmbDetail(
+            avg_relevance=_mean(ps_list, "avg_relevance"),
+            avg_accuracy=_mean(ps_list, "avg_accuracy"),
+            avg_helpfulness=_mean(ps_list, "avg_helpfulness"),
+            avg_korean_fluency=_mean(ps_list, "avg_korean_fluency"),
+            avg_source_citation=_mean(ps_list, "avg_source_citation"),
+            avg_overall=_mean(ps_list, "avg_overall"),
+            avg_retrieval_score=_mean(ps_list, "avg_retrieval_score"),
+            llm_count=len(ps_list),
+        )
+        for emb_id, ps_list in emb_ps_map.items()
+    }
 
     # By category breakdown
     q_map = {q.id: q for q in state.test_questions.values()}
@@ -217,6 +241,7 @@ async def get_comparison(run_id: str):
         pair_summaries=pair_summaries,
         llm_avg=llm_avg,
         emb_avg=emb_avg,
+        emb_detail=emb_detail,
         by_category=by_category,
     )
 
