@@ -1,5 +1,5 @@
 """
-Unified async LLM client for generation models (Anthropic, OpenAI, Ollama, Google Gemini).
+Unified async LLM client for generation models (Ollama, Google Gemini).
 
 Note: this module is ONLY for text generation.
 Embedding is handled separately in vector_store.py.
@@ -22,40 +22,27 @@ class LLMResponse:
 # ── Provider detection ────────────────────────────────────────────────────────
 
 def _provider_for(model_id: str) -> str:
-    if model_id.startswith("claude"):
-        return "anthropic"
-    if model_id.startswith(("gpt-", "o1", "o3", "text-")):
-        return "openai"
     if model_id.startswith("gemini"):
         return "google"
+    if model_id.startswith("openrouter:"):
+        return "openrouter"
     return "ollama"
 
 
-# ── Anthropic ─────────────────────────────────────────────────────────────────
+# ── OpenRouter ────────────────────────────────────────────────────────────────
 
-async def _call_anthropic(model_id: str, system: str, messages: list[dict]) -> LLMResponse:
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-    t0 = time.perf_counter()
-    r = await client.messages.create(
-        model=model_id, max_tokens=1024, system=system, messages=messages,
-    )
-    return LLMResponse(
-        content=r.content[0].text if r.content else "",
-        prompt_tokens=r.usage.input_tokens,
-        completion_tokens=r.usage.output_tokens,
-        latency_ms=(time.perf_counter() - t0) * 1000,
-    )
-
-
-# ── OpenAI ────────────────────────────────────────────────────────────────────
-
-async def _call_openai(model_id: str, system: str, messages: list[dict]) -> LLMResponse:
+async def _call_openrouter(model_id: str, system: str, messages: list[dict]) -> LLMResponse:
+    """Call OpenRouter API. model_id should be 'openrouter:<provider/model>'."""
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    # Strip the 'openrouter:' prefix to get the actual OpenRouter model name
+    actual_model = model_id.removeprefix("openrouter:")
+    client = AsyncOpenAI(
+        api_key=settings.openrouter_api_key,
+        base_url=settings.openrouter_base_url,
+    )
     t0 = time.perf_counter()
     r = await client.chat.completions.create(
-        model=model_id,
+        model=actual_model,
         messages=[{"role": "system", "content": system}] + messages,
         max_tokens=1024,
     )
@@ -127,12 +114,10 @@ async def _call_ollama(model_id: str, system: str, messages: list[dict]) -> LLMR
 async def call_model(model_id: str, system: str, question: str) -> LLMResponse:
     messages = [{"role": "user", "content": question}]
     provider = _provider_for(model_id)
-    if provider == "anthropic":
-        return await _call_anthropic(model_id, system, messages)
-    if provider == "openai":
-        return await _call_openai(model_id, system, messages)
     if provider == "google":
         return await _call_gemini(model_id, system, messages)
+    if provider == "openrouter":
+        return await _call_openrouter(model_id, system, messages)
     return await _call_ollama(model_id, system, messages)
 
 
@@ -169,20 +154,22 @@ async def _ollama_model_ids() -> list[str]:
         return []
 
 
+_OPENROUTER_MODELS = [
+    ("openrouter:openai/gpt-5-nano", "GPT-5 Nano"),
+    ("openrouter:openai/gpt-4.1-nano", "GPT-4.1 Nano"),
+    ("openrouter:openai/gpt-4.1-mini", "GPT-4.1 Mini"),
+    ("openrouter:openai/gpt-4.1", "GPT-4.1"),
+    ("openrouter:openai/gpt-4o-mini", "GPT-4o Mini"),
+    ("openrouter:openai/gpt-4o", "GPT-4o"),
+    ("openrouter:anthropic/claude-haiku-4-5", "Claude Haiku 4.5"),
+    ("openrouter:anthropic/claude-sonnet-4-5", "Claude Sonnet 4.5"),
+    ("openrouter:meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
+    ("openrouter:meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B"),
+]
+
+
 async def get_available_llm_models() -> list[LLMModelInfo]:
     models: list[LLMModelInfo] = []
-
-    anthropic_ok = bool(settings.anthropic_api_key)
-    for mid, name in [
-        ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
-        ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
-        ("claude-opus-4-6", "Claude Opus 4.6"),
-    ]:
-        models.append(LLMModelInfo(
-            id=mid, name=name, provider=LLMProvider.ANTHROPIC,
-            available=anthropic_ok,
-            description="" if anthropic_ok else "ANTHROPIC_API_KEY 미설정",
-        ))
 
     gemini_ok = bool(settings.gemini_api_key)
     for mid, name in [
@@ -194,6 +181,15 @@ async def get_available_llm_models() -> list[LLMModelInfo]:
             id=mid, name=name, provider=LLMProvider.GOOGLE,
             available=gemini_ok,
             description="" if gemini_ok else "GEMINI_API_KEY 미설정",
+        ))
+
+    openrouter_ok = bool(settings.openrouter_api_key)
+    for mid, name in _OPENROUTER_MODELS:
+        models.append(LLMModelInfo(
+            id=mid, name=f"{name} (OpenRouter)",
+            provider=LLMProvider.OPENROUTER,
+            available=openrouter_ok,
+            description="" if openrouter_ok else "OPENROUTER_API_KEY 미설정",
         ))
 
     for mid in await _ollama_model_ids():
