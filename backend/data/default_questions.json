@@ -1,142 +1,156 @@
 [
   {
+    "id": "q_order_01",
+    "category": "주문/결제",
+    "question": "주문 후 결제 수단을 변경하거나 취소할 수 있나요?",
+    "expected_topics": ["주문 취소", "결제 변경", "취소 기한"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_order_02",
+    "category": "주문/결제",
+    "question": "이용 가능한 결제 수단은 어떤 것들이 있나요?",
+    "expected_topics": ["카드 결제", "계좌이체", "간편결제"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_order_03",
+    "category": "주문/결제",
+    "question": "현금영수증 또는 세금계산서 발급이 가능한가요?",
+    "expected_topics": ["현금영수증", "세금계산서", "증빙"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_order_04",
+    "category": "주문/결제",
+    "question": "미성년자도 회원 가입 없이 비회원 주문이 가능한가요?",
+    "expected_topics": ["비회원 주문", "본인 인증", "주문 방법"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_privacy_01",
+    "category": "개인정보/회원",
+    "question": "회원 가입 시 수집하는 개인정보 항목과 이용 목적이 무엇인가요?",
+    "expected_topics": ["개인정보 수집", "이용 목적", "필수 항목"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_privacy_02",
+    "category": "개인정보/회원",
+    "question": "회원 탈퇴 후 개인정보는 어떻게 처리되나요? 즉시 삭제되나요?",
+    "expected_topics": ["회원 탈퇴", "개인정보 삭제", "보관 기간"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_privacy_03",
+    "category": "개인정보/회원",
+    "question": "개인정보가 제3자에게 제공되는 경우가 있나요?",
+    "expected_topics": ["제3자 제공", "개인정보 공유", "동의"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_privacy_04",
+    "category": "개인정보/회원",
+    "question": "비밀번호를 잊어버렸을 때 계정을 어떻게 복구하나요?",
+    "expected_topics": ["비밀번호 찾기", "본인 인증", "계정 복구"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_cs_01",
+    "category": "고객서비스",
+    "question": "고객센터 운영 시간이 어떻게 되나요? 공휴일에도 상담이 가능한가요?",
+    "expected_topics": ["운영 시간", "공휴일", "상담 채널"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_cs_02",
+    "category": "고객서비스",
+    "question": "전화 상담 외에 채팅이나 이메일로도 문의할 수 있나요?",
+    "expected_topics": ["상담 채널", "채팅 상담", "이메일 문의"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_cs_03",
+    "category": "고객서비스",
+    "question": "불만 접수 후 처리 결과는 어떻게 안내받을 수 있나요?",
+    "expected_topics": ["불만 처리", "답변 기한", "처리 결과 안내"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_refund_01",
+    "category": "반품/교환/환불",
+    "question": "상품 수령 후 며칠 이내에 반품 신청이 가능한가요?",
+    "expected_topics": ["반품 기한", "신청 기간", "반품 조건"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_refund_02",
+    "category": "반품/교환/환불",
+    "question": "단순 변심으로 반품할 경우 배송비는 누가 부담하나요?",
+    "expected_topics": ["단순 변심", "반품 배송비", "비용 부담"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_refund_03",
+    "category": "반품/교환/환불",
+    "question": "환불은 원래 결제 수단으로 돌아오나요? 얼마나 걸리나요?",
+    "expected_topics": ["환불 수단", "환불 기간", "카드 취소"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_refund_04",
+    "category": "반품/교환/환불",
+    "question": "오배송이나 불량품을 받았을 때 교환 절차는 어떻게 되나요?",
+    "expected_topics": ["오배송", "불량품", "교환 절차", "재배송"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_quality_01",
+    "category": "상품품질/신선도",
+    "question": "신선도가 보장되지 않는 상품을 받았을 때 어떻게 보상받을 수 있나요?",
+    "expected_topics": ["신선도 보증", "품질 불량", "보상 기준"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_quality_02",
+    "category": "상품품질/신선도",
+    "question": "상품 품질 보증 기준이 어떻게 되나요? 어떤 기준으로 신선도를 판단하나요?",
+    "expected_topics": ["품질 기준", "신선도 판단", "보증 기준"],
+    "reference_answer": null
+  },
+  {
+    "id": "q_quality_03",
+    "category": "상품품질/신선도",
+    "question": "유기농·친환경 인증 상품인지 어떻게 확인할 수 있나요?",
+    "expected_topics": ["유기농 인증", "친환경", "인증 확인"],
+    "reference_answer": null
+  },
+  {
     "id": "q_delivery_01",
     "category": "배송",
-    "question": "주문한 농산물은 언제 도착하나요? 보통 배송 기간이 얼마나 걸리나요?",
-    "expected_topics": ["배송 기간", "영업일", "출고"],
+    "question": "주문 후 배송까지 보통 며칠이 걸리나요?",
+    "expected_topics": ["배송 기간", "출고일", "영업일"],
     "reference_answer": null
   },
   {
     "id": "q_delivery_02",
     "category": "배송",
-    "question": "제주도나 도서 산간 지역에도 배송이 되나요?",
+    "question": "제주도나 도서·산간 지역 배송도 가능한가요? 추가 요금이 있나요?",
     "expected_topics": ["제주도", "도서 산간", "추가 배송비"],
     "reference_answer": null
   },
   {
     "id": "q_delivery_03",
     "category": "배송",
-    "question": "배송 조회는 어떻게 하나요?",
-    "expected_topics": ["배송 조회", "운송장 번호", "택배사"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_return_01",
-    "category": "반품/환불",
-    "question": "받은 채소가 신선하지 않아서 환불을 받고 싶어요. 어떻게 해야 하나요?",
-    "expected_topics": ["신선도", "환불", "반품 절차", "고객센터"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_return_02",
-    "category": "반품/환불",
-    "question": "주문 취소는 언제까지 가능하고 어떻게 하나요?",
-    "expected_topics": ["주문 취소", "취소 기한", "환불 기간"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_return_03",
-    "category": "반품/환불",
-    "question": "잘못된 상품이 배송되었어요. 어떻게 처리되나요?",
-    "expected_topics": ["오배송", "교환", "재배송"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_product_01",
-    "category": "상품",
-    "question": "유기농 인증 상품인지 어떻게 확인할 수 있나요?",
-    "expected_topics": ["유기농 인증", "인증 마크", "친환경"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_product_02",
-    "category": "상품",
-    "question": "지금 이 계절에 구매하기 좋은 제철 농산물은 뭐가 있나요?",
-    "expected_topics": ["제철", "계절 농산물", "추천"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_product_03",
-    "category": "상품",
-    "question": "상품 원산지는 어떻게 확인하나요?",
-    "expected_topics": ["원산지", "생산지", "국내산"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_storage_01",
-    "category": "보관",
-    "question": "배달받은 채소들을 얼마나 보관할 수 있나요? 보관 방법도 알려주세요.",
-    "expected_topics": ["보관 기간", "냉장 보관", "신선도"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_storage_02",
-    "category": "보관",
-    "question": "과일은 냉장 보관해야 하나요, 실온 보관해야 하나요?",
-    "expected_topics": ["냉장", "실온", "과일 보관"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_payment_01",
-    "category": "결제",
-    "question": "어떤 결제 방법을 이용할 수 있나요?",
-    "expected_topics": ["카드 결제", "계좌이체", "간편결제"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_payment_02",
-    "category": "결제",
-    "question": "현금영수증이나 세금계산서 발급이 가능한가요?",
-    "expected_topics": ["현금영수증", "세금계산서", "영수증"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_membership_01",
-    "category": "회원",
-    "question": "정기 구독 서비스가 있나요? 할인 혜택은 어떻게 되나요?",
-    "expected_topics": ["정기 구독", "할인", "혜택"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_membership_02",
-    "category": "회원",
-    "question": "적립금은 어떻게 사용하나요? 유효 기간이 있나요?",
-    "expected_topics": ["적립금", "포인트", "유효 기간"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_cs_01",
-    "category": "고객센터",
-    "question": "고객 센터 운영 시간이 언제인가요? 전화 상담이 가능한가요?",
-    "expected_topics": ["고객센터", "운영 시간", "전화 상담"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_cs_02",
-    "category": "고객센터",
-    "question": "상품에 대해 농부나 생산자에게 직접 질문할 수 있나요?",
-    "expected_topics": ["생산자", "직접 판매", "1:1 문의"],
+    "question": "배송지 변경이나 배송일 지정은 어떻게 하나요?",
+    "expected_topics": ["배송지 변경", "배송일 지정", "배송 옵션"],
     "reference_answer": null
   },
   {
     "id": "q_delivery_04",
     "category": "배송",
-    "question": "냉장/냉동 배송이 필요한 상품은 어떻게 배송되나요?",
-    "expected_topics": ["냉장 배송", "냉동 배송", "아이스팩"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_product_04",
-    "category": "상품",
-    "question": "GAP(농산물우수관리) 인증이란 무엇인가요?",
-    "expected_topics": ["GAP 인증", "농산물우수관리", "식품 안전"],
-    "reference_answer": null
-  },
-  {
-    "id": "q_cs_03",
-    "category": "고객센터",
-    "question": "상품을 받았는데 포장이 파손되어 있어요. 어떻게 해야 하나요?",
-    "expected_topics": ["포장 파손", "배송 사고", "보상"],
+    "question": "냉장·냉동이 필요한 상품은 어떻게 배송되나요? 아이스팩이 포함되나요?",
+    "expected_topics": ["냉장 배송", "냉동 배송", "아이스팩", "보냉 포장"],
     "reference_answer": null
   }
 ]
