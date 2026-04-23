@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import state
-from app.routers import documents, test_suite, runs, models_router, debug
+from app.routers import documents, test_suite, runs, models_router, debug, pipeline
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ app.include_router(test_suite.router)
 app.include_router(runs.router)
 app.include_router(models_router.router)
 app.include_router(debug.router)
+app.include_router(pipeline.router)
 
 
 @app.get("/api/health")
